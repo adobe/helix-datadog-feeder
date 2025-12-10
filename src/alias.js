@@ -77,6 +77,12 @@ async function fetchAliases(context, funcName, funcVersion) {
  * @property {string} full fully qualified alias, e.g. `1.2.3`
  */
 
+/**
+ * Clean an alias object of internal properties.
+ *
+ * @param {Alias} alias alias with internal properties
+ * @returns {Alias} pure alias
+ */
 function cleanAlias(alias) {
   return ['major', 'full'].reduce((acc, key) => {
     if (alias[key]) {
