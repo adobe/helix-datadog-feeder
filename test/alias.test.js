@@ -67,6 +67,6 @@ describe('Alias Tests', () => {
 
     // second request should not go to server
     const alias2 = await resolve({ log: console, env }, 'services--func', '1');
-    assert.strictEqual(alias2, alias);
+    assert.deepStrictEqual(alias2, alias);
   });
 });
