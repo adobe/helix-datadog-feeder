@@ -77,6 +77,15 @@ async function fetchAliases(context, funcName, funcVersion) {
  * @property {string} full fully qualified alias, e.g. `1.2.3`
  */
 
+function cleanAlias(alias) {
+  return ['major', 'full'].reduce((acc, key) => {
+    if (alias[key]) {
+      acc[key] = alias[key];
+    }
+    return acc;
+  }, {});
+}
+
 /**
  * Resolve an alias for a function.
  *
@@ -90,12 +99,7 @@ export async function resolve(context, funcName, funcVersion) {
 
   let alias = ALIAS_CACHE.get(funcName)?.[funcVersion];
   if (alias && alias.expiry > Date.now()) {
-    return ['major', 'full'].reduce((acc, key) => {
-      if (alias[key]) {
-        acc[key] = alias[key];
-      }
-      return acc;
-    }, {});
+    return cleanAlias(alias);
   }
   const resp = await fetchAliases(context, funcName, funcVersion);
   if (!resp.ok) {
@@ -123,10 +127,5 @@ export async function resolve(context, funcName, funcVersion) {
   parent[funcVersion] = alias;
   ALIAS_CACHE.set(funcName, parent);
 
-  return ['major', 'full'].reduce((acc, key) => {
-    if (alias[key]) {
-      acc[key] = alias[key];
-    }
-    return acc;
-  }, {});
+  return cleanAlias(alias);
 }
