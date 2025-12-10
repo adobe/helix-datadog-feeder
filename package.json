@@ -1,6 +1,6 @@
 {
   "name": "@adobe/helix-datadog-feeder",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "private": true,
   "description": "Helix DataDog Feeder",
   "main": "src/index.js",
