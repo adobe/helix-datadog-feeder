@@ -12,16 +12,24 @@
 
 /* eslint-env mocha */
 import assert from 'assert';
+import sinon from 'sinon';
 import { Nock } from './utils.js';
-import { resolve } from '../src/alias.js';
+import { ALIAS_CACHE, resolve } from '../src/alias.js';
 
 describe('Alias Tests', () => {
   let nock;
+  let clock;
+
   beforeEach(() => {
     nock = new Nock();
+    clock = sinon.useFakeTimers({
+      toFake: ['Date'],
+    });
+    ALIAS_CACHE.clear();
   });
 
   afterEach(() => {
+    clock.restore();
     nock.done();
   });
 
@@ -65,8 +73,44 @@ describe('Alias Tests', () => {
       full: '1.0.0',
     });
 
-    // second request should not go to server
     const alias2 = await resolve({ log: console, env }, 'services--func', '1');
-    assert.strictEqual(alias2, alias);
+    assert.deepStrictEqual(alias2, alias);
+  });
+
+  it('refetch alias when expiry is reached', async () => {
+    nock('https://lambda.us-east-1.amazonaws.com')
+      .get('/2015-03-31/functions/services--func/aliases?FunctionVersion=1')
+      .reply(200, {
+        Aliases: [{
+          Name: '1_0_0',
+        }],
+      })
+      .get('/2015-03-31/functions/services--func/aliases?FunctionVersion=1')
+      .twice()
+      .reply(200, {
+        Aliases: [{
+          Name: 'v1',
+        }, {
+          Name: '1_0_0',
+        }],
+      });
+
+    let alias = await resolve({ log: console, env }, 'services--func', '1');
+    assert.deepStrictEqual(alias, {
+      full: '1.0.0',
+    });
+
+    clock.tick(2_000);
+
+    alias = await resolve({ log: console, env }, 'services--func', '1');
+    assert.deepStrictEqual(alias, {
+      major: 'v1',
+      full: '1.0.0',
+    });
+
+    clock.tick(60_000);
+
+    const alias2 = await resolve({ log: console, env }, 'services--func', '1');
+    assert.deepStrictEqual(alias2, alias);
   });
 });

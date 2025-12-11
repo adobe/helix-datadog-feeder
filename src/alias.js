@@ -13,6 +13,9 @@ import aws4 from 'aws4';
 import { Response } from '@adobe/fetch';
 import { fetchContext } from './utils.js';
 
+/**
+ * Alias cache.
+ */
 export const ALIAS_CACHE = new Map();
 
 /**
@@ -75,6 +78,21 @@ async function fetchAliases(context, funcName, funcVersion) {
  */
 
 /**
+ * Clean an alias object of internal properties.
+ *
+ * @param {Alias} alias alias with internal properties
+ * @returns {Alias} pure alias
+ */
+function cleanAlias(alias) {
+  return ['major', 'full'].reduce((acc, key) => {
+    if (alias[key]) {
+      acc[key] = alias[key];
+    }
+    return acc;
+  }, {});
+}
+
+/**
  * Resolve an alias for a function.
  *
  * @param {UniversalContext} context universal context
@@ -86,8 +104,8 @@ export async function resolve(context, funcName, funcVersion) {
   const { log } = context;
 
   let alias = ALIAS_CACHE.get(funcName)?.[funcVersion];
-  if (alias) {
-    return alias;
+  if (alias && alias.expiry > Date.now()) {
+    return cleanAlias(alias);
   }
   const resp = await fetchAliases(context, funcName, funcVersion);
   if (!resp.ok) {
@@ -109,9 +127,11 @@ export async function resolve(context, funcName, funcVersion) {
       alias.full = name.replace(/_/g, '.');
     }
   });
+  alias.expiry = Date.now() + (!!alias.major && !!alias.full ? 60_000 : 2_000);
+
   const parent = ALIAS_CACHE.get(funcName) || {};
   parent[funcVersion] = alias;
   ALIAS_CACHE.set(funcName, parent);
 
-  return alias;
+  return cleanAlias(alias);
 }
